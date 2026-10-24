@@ -1,0 +1,12 @@
+{
+  "version": "unity-demo-1",
+  "platform": "StandaloneWindows64",
+  "files": [
+    {
+      "key": "world",
+      "path": "world",
+      "sha256": "9d0dd37b77d336bce8d1aca71e2a989e025fd78c68ae12690e20b3877c97dbfa",
+      "size": 648961
+    }
+  ]
+}

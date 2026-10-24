@@ -1,0 +1,11 @@
+{
+  "version": "base",
+  "files": [
+    {
+      "key": "catalog",
+      "path": "catalog.5919798ca6d5fe35.json",
+      "sha256": "5919798ca6d5fe351e1dfa1299fa38193f2acbe7b9125fdb7dcbff869ee3ccf5",
+      "size": 381858
+    }
+  ]
+}

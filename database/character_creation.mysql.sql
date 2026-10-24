@@ -1,0 +1,40 @@
+CREATE TABLE users (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(24) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL UNIQUE,
+    Password VARCHAR(128) NOT NULL,
+    role INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE characters (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    slot INT NOT NULL,
+    name VARCHAR(24) NOT NULL,
+    name_key VARCHAR(24) COLLATE utf8mb4_bin NOT NULL UNIQUE,
+    class_id INT NOT NULL,
+    gender INT NOT NULL,
+    appearance_id INT NOT NULL,
+    race_id INT NOT NULL DEFAULT 0,
+    element_id INT NOT NULL DEFAULT 0,
+    talent_seen BOOLEAN NOT NULL DEFAULT FALSE,
+    realm_id INT NOT NULL DEFAULT 1,
+    map_id INT NOT NULL DEFAULT 1,
+    InfoGame JSON NULL,
+    game_revision BIGINT NOT NULL DEFAULT 0,
+    position_x FLOAT NOT NULL DEFAULT 800,
+    position_y FLOAT NOT NULL DEFAULT 600,
+    InfoChar JSON NOT NULL,
+    ItemBody JSON NOT NULL DEFAULT '[]',
+    ItemBag JSON NOT NULL DEFAULT '[]',
+    ItemBox JSON NOT NULL DEFAULT '[]',
+    Skills JSON NOT NULL DEFAULT '[]',
+    InfoTask JSON NOT NULL DEFAULT '{}',
+    UNIQUE KEY uq_character_slot(user_id, slot),
+    CONSTRAINT fk_creation_user FOREIGN KEY(user_id) REFERENCES users(id),
+    CONSTRAINT ck_creation_slot CHECK(slot BETWEEN 1 AND 3),
+    CONSTRAINT ck_creation_class CHECK(class_id BETWEEN 1 AND 5),
+    CONSTRAINT ck_creation_gender CHECK(gender IN (0, 1)),
+    CONSTRAINT ck_creation_race CHECK(race_id BETWEEN 0 AND 5),
+    CONSTRAINT ck_creation_element CHECK(element_id BETWEEN 0 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

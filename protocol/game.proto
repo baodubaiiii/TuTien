@@ -1,0 +1,59 @@
+syntax = "proto3";
+package tutien.v1;
+option csharp_namespace = "TuTien.Protocol";
+
+message ClientMessage {
+  uint32 protocol_version = 1;
+  uint64 sequence = 2;
+  oneof payload {
+    Join join = 10;
+    Move move = 11;
+    CastSkill cast_skill = 12;
+    Interact interact = 13;
+    ClaimQuest claim_quest = 14;
+    EquipItem equip_item = 15;
+    GuildCommand guild = 16;
+    ChangeZone change_zone = 17;
+    Ping ping = 18;
+  }
+}
+message Join { string ticket = 1; }
+message Move { float x = 1; float y = 2; }
+message CastSkill { string target_id = 1; int32 skill_id = 2; }
+message Interact { string target_id = 1; }
+message ClaimQuest { int32 quest_id = 1; }
+message EquipItem { string item_id = 1; }
+message GuildCommand { string action = 1; string name = 2; string guild_id = 3; }
+message ChangeZone { int32 zone_id = 1; }
+message Ping { double client_time = 1; }
+
+message ServerMessage {
+  uint32 protocol_version = 1;
+  uint64 sequence = 2;
+  oneof payload {
+    Welcome welcome = 10;
+    WorldSnapshot snapshot = 11;
+    CommandResult result = 12;
+    Pong pong = 13;
+  }
+}
+message Welcome { string character_id = 1; int32 tick_rate = 2; string content_version = 3; }
+message WorldSnapshot {
+  uint64 tick = 1;
+  int32 zone_id = 2;
+  bool full = 3;
+  repeated Entity upserts = 4;
+  repeated string removed_ids = 5;
+  Character self = 6;
+}
+message Entity { string id = 1; string name = 2; string kind = 3; float x = 4; float y = 5; int32 hp = 6; int32 max_hp = 7; }
+message Character {
+  string id = 1; string name = 2; int32 hp = 3; int32 mana = 4;
+  int32 gold = 5; repeated Item inventory = 6; repeated QuestProgress quests = 7;
+  string guild_id = 8; int64 revision = 9; bool saving = 10;
+}
+message Item { string id = 1; int32 template_id = 2; int32 quantity = 3; bool equipped = 4; repeated ItemOption options = 5; }
+message ItemOption { int32 id = 1; int32 value = 2; }
+message QuestProgress { int32 quest_id = 1; int32 count = 2; bool accepted = 3; bool claimed = 4; }
+message CommandResult { uint64 request_sequence = 1; bool success = 2; string code = 3; string message = 4; }
+message Pong { double client_time = 1; int64 server_time = 2; }

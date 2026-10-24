@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS map_npc_template;
+DROP TABLE IF EXISTS item_map;
+DROP TABLE IF EXISTS monster_kill;
+
+ALTER TABLE map_template
+    ADD COLUMN IF NOT EXISTS arrNpc JSON NOT NULL DEFAULT '[]';
+
+DROP TABLE IF EXISTS characters;
+DROP TABLE IF EXISTS users;

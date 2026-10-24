@@ -1,0 +1,73 @@
+name: Base verification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: ci-only-password
+          MARIADB_DATABASE: tutien
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: dotnet restore TuTien.slnx
+      - run: dotnet build TuTien.slnx -c Release --no-restore
+      - run: dotnet test tests/TuTien.Tests -c Release --no-build
+      - run: sudo apt-get update && sudo apt-get install -y mariadb-client
+      - name: Initialize isolated SQL schema and templates
+        env:
+          MYSQL_PWD: ci-only-password
+        run: |
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/character_creation.mysql.sql
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/002_templates.mysql.sql
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/seeds/001_tutien_templates.mysql.sql
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/003_character_world.mysql.sql
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien -e "CREATE TABLE IF NOT EXISTS tutien_schema(id INT PRIMARY KEY, name VARCHAR(100) NOT NULL);"
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/006_world.mysql.sql
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/007_progression.mysql.sql
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/008_task_reward.mysql.sql
+          mysql --host=127.0.0.1 --user=root --default-character-set=utf8mb4 tutien < database/009_task_reward_items.mysql.sql
+      - run: dotnet run --project tools/ContentBuilder -c Release --no-build -- "$PWD"
+      - run: npm ci --ignore-scripts && npx playwright install --with-deps chromium
+        working-directory: client
+      - name: Start Base server
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          Database__Provider: MySql
+          ConnectionStrings__Game: Server=127.0.0.1;Port=3306;Database=tutien;User ID=root;Password=ci-only-password
+        run: |
+          dotnet run --project TuTien.Server.csproj -c Release --no-build > /tmp/tutien-base.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:5080/health | jq -e '.creationReady == true'; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/tutien-base.log
+          exit 1
+      - run: node tools/Verify-Characters.mjs
+      - run: node tools/Verify-Gameplay.mjs
+      - run: node tools/Verify-Tcp.mjs
+      - run: node tools/Verify-World.mjs
+      - run: node tools/Verify-Progression.mjs
+      - run: node client/node_modules/@playwright/test/cli.js test character-creation.spec.ts gameplay.spec.ts --config client/playwright.config.ts --reporter line
+      - run: node tools/Verify-Base.mjs --shutdown
+      - name: Stop Base server
+        if: always()
+        run: curl --fail --silent --request POST --header 'X-TuTien-Local-Control: shutdown' http://127.0.0.1:5080/api/dev/shutdown || true
+      - name: Host log
+        if: always()
+        run: cat /tmp/tutien-base.log || true

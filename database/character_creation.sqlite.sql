@@ -1,0 +1,53 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    Password TEXT NOT NULL,
+    role INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS characters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    slot INTEGER NOT NULL CHECK(slot BETWEEN 1 AND 3),
+    name TEXT NOT NULL,
+    name_key TEXT NOT NULL UNIQUE,
+    class_id INTEGER NOT NULL CHECK(class_id BETWEEN 1 AND 5),
+    gender INTEGER NOT NULL CHECK(gender IN (0, 1)),
+    appearance_id INTEGER NOT NULL,
+    race_id INTEGER NOT NULL DEFAULT 0 CHECK(race_id BETWEEN 0 AND 5),
+    element_id INTEGER NOT NULL DEFAULT 0 CHECK(element_id BETWEEN 0 AND 5),
+    talent_seen INTEGER NOT NULL DEFAULT 0,
+    realm_id INTEGER NOT NULL DEFAULT 1,
+    map_id INTEGER NOT NULL DEFAULT 1,
+    InfoGame TEXT NULL,
+    game_revision INTEGER NOT NULL DEFAULT 0,
+    position_x REAL NOT NULL DEFAULT 800,
+    position_y REAL NOT NULL DEFAULT 600,
+    InfoChar TEXT NOT NULL,
+    ItemBody TEXT NOT NULL DEFAULT '[]',
+    ItemBag TEXT NOT NULL DEFAULT '[]',
+    ItemBox TEXT NOT NULL DEFAULT '[]',
+    Skills TEXT NOT NULL DEFAULT '[]',
+    InfoTask TEXT NOT NULL DEFAULT '{}',
+    UNIQUE(user_id, slot)
+);
+CREATE TABLE IF NOT EXISTS monster_kill (
+    life_id TEXT PRIMARY KEY,
+    character_id INTEGER NOT NULL,
+    map_id INTEGER NOT NULL,
+    zone_id INTEGER NOT NULL,
+    tu_vi INTEGER NOT NULL,
+    killed_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS item_map (
+    id TEXT PRIMARY KEY,
+    player_id INTEGER NOT NULL,
+    map_id INTEGER NOT NULL,
+    zone_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    x REAL NOT NULL,
+    y REAL NOT NULL,
+    owner_time INTEGER NOT NULL,
+    left_time INTEGER NOT NULL
+);
