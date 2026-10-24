@@ -216,6 +216,103 @@ MariaDB
 
 Unity world bundle được phục vụ riêng trong `content/published/unity` và được kiểm tra SHA-256/size trước khi client sử dụng.
 
+### Cấu hình database
+
+Bản demo dùng MariaDB/MySQL với schema `tutien`. File mẫu kết nối là `appsettings.Local.example.json`; thông tin thật của máy chạy không được đưa vào source hoặc ZIP.
+
+```json
+{
+  "Database": {
+    "Provider": "MySql"
+  },
+  "ConnectionStrings": {
+    "Game": "Server=127.0.0.1;Port=3306;Database=tutien;User ID=tutien_app;Password=CHANGE_ME;Character Set=utf8mb4"
+  }
+}
+```
+
+Runtime chỉ cần quyền đọc/ghi dữ liệu trên schema `tutien`. Không cần quyền `CREATE`, `ALTER`, `DROP` hoặc `GRANT` khi server đang chạy. DDL và migration được chạy riêng bằng tool quản trị.
+
+### Nhóm bảng
+
+| Nhóm | Bảng | Vai trò |
+|---|---|---|
+| Tài khoản | `users` | username, password demo và thông tin tài khoản |
+| Nhân vật | `characters` | 3 slot, `InfoChar`, `InfoGame`, `Skills`, `InfoTask`, revision và vị trí |
+| Vật phẩm | `item_template`, `item_option_template` | danh mục item, option, trang bị và đan dược |
+| Thế giới | `map_template`, `npc_template`, `monster_template` | map, NPC, waypoint, mob và thông số quái |
+| Gameplay | `task_template`, `skill_template`, `realm_template` | nhiệm vụ, kỹ năng, cảnh giới và điều kiện tiến cấp |
+| Runtime bền vững | `item_map`, `monster_kill` | item rơi chưa nhặt và receipt chống nhận thưởng quái hai lần |
+| Migration | `tutien_schema` | marker xác nhận database thuộc dự án và các migration đã chạy |
+
+### Dữ liệu JSON của nhân vật
+
+- `InfoChar`: chỉ số gốc, chỉ số sau khi tính Tộc/Linh Căn, HP/MP tối đa.
+- `InfoGame`: HP/MP hiện tại, điểm tiềm năng, hiệu lực đan dược, skill slots và trạng thái Lôi Kiếp.
+- `ItemBody`: item đang mặc theo slot.
+- `ItemBag`: item trong hành trang.
+- `ItemBox`: dữ liệu kho, phần thao tác chuyển đồ chưa mở trong bản hiện tại.
+- `Skills`: templateId, level và LastTimeUse.
+- `InfoTask`: MainTask và danh sách ID nhiệm vụ đã nhận thưởng.
+
+Mọi thay đổi nhân vật dùng `game_revision`:
+
+```text
+Load character
+→ clone dữ liệu
+→ kiểm tra điều kiện
+→ UPDATE ... WHERE game_revision = revision_cũ
+→ nếu đúng 1 dòng: tăng revision và publish
+→ nếu không: từ chối và yêu cầu tải lại
+```
+
+Nhờ vậy các thao tác nhận thưởng, dùng item, học skill, đánh quái và phân bổ điểm không ghi đè lẫn nhau giữa hai kết nối.
+
+### Migration SQL
+
+Các migration gameplay hiện có:
+
+| File | Nội dung |
+|---|---|
+| `006_world.mysql.sql` | monster template, kill receipt và item rơi |
+| `007_progression.mysql.sql` | task, skill, realm, Skills và InfoTask |
+| `008_task_reward.mysql.sql` | chuyển format reward cũ sang JSON |
+| `009_task_reward_items.mysql.sql` | chuyển reward thành `List<GameItem>` JSON array |
+
+Phần thưởng nhiệm vụ hiện gồm hai cột số và một danh sách item:
+
+```sql
+reward_tu_vi  BIGINT
+reward_points INT
+reward        JSON
+```
+
+Ví dụ giá trị `reward`:
+
+```json
+[
+  {"id":3010,"quantity":2,"options":[]},
+  {"id":3020,"quantity":1,"options":[{"id":2,"param":5,"type":0}]}
+]
+```
+
+Khi nhận thưởng, server kiểm tra toàn bộ danh sách trên bản clone. Nếu một item không hợp lệ hoặc hành trang không đủ chỗ, transaction không cộng tu vi, không cộng điểm và không ghi `Completed`.
+
+### Nạp database mới
+
+```text
+character_creation.mysql.sql
+→ 002_templates.mysql.sql
+→ seeds/001_tutien_templates.mysql.sql
+→ 003_character_world.mysql.sql
+→ 006_world.mysql.sql
+→ 007_progression.mysql.sql
+→ 008_task_reward.mysql.sql
+→ 009_task_reward_items.mysql.sql
+```
+
+Sau khi thay đổi SQL, chạy DatabaseBuilder để export catalog rồi chạy ContentBuilder để tạo manifest/hash CDN. Không hot reload catalog khi world đang hoạt động; restart server sau khi export.
+
 ## Unity scenes
 
 - `LoadingScene`: khởi tạo GameRoot, tải catalog và AssetBundle.
